@@ -7,7 +7,7 @@ webhook = Blueprint('Webhook', __name__, url_prefix='/webhooks')
 
 @webhook.get('/recieved')
 def get_stored_data():
-    events = list(mongo.db.events.find())
+    events = list(mongo.db.events.find().sort('timestamp', -1))
     for event in events:
         event['_id'] = str(event['_id'])
         event['timestamp'] = event['timestamp'].astimezone(pytz.utc).strftime('%d %B %Y - %I:%M %p UTC')
@@ -15,9 +15,7 @@ def get_stored_data():
             event['message'] = f'{event["author"]} pushed to "{event["to_branch"]}" on {event["timestamp"]}'
         elif event['action'] == 'pull_request':
             event['message'] = f'{event["author"]} submitted a pull request from "{event["from_branch"]}" to "{event["to_branch"]}" on {event["timestamp"]}'
-
-    return render_template('data.html', events=events)
-
+    return render_template('index.html', events=events)
 
 
 @webhook.post('/reciever')
