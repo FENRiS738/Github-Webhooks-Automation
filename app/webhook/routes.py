@@ -5,6 +5,8 @@ from ..connections import mongo
 
 webhook = Blueprint('Webhook', __name__, url_prefix='/webhooks')
 
+
+# Endpoint to get all webhooks event call details and displays them on frontend  
 @webhook.get('/recieved')
 def get_stored_data():
     events = list(mongo.db.events.find().sort('timestamp', -1))
@@ -17,7 +19,7 @@ def get_stored_data():
             event['message'] = f'{event["author"]} submitted a pull request from "{event["from_branch"]}" to "{event["to_branch"]}" on {event["timestamp"]}'
     return render_template('index.html', events=events)
 
-
+# Endpoint to accept push and pull request webhooks event calls
 @webhook.post('/reciever')
 def get_webhook_data():
     event = request.headers.get('X-GitHub-Event')
@@ -35,6 +37,7 @@ def get_webhook_data():
     return {"success": "Data inserted successfully"}, 200
 
 
+# Method to store push event data in MongoDB
 def create_push_event(data: dict, event: str):
     try:
         request_id = data.get('head_commit', {}).get('id')
@@ -59,7 +62,7 @@ def create_push_event(data: dict, event: str):
     except Exception as ex:
         return {"error": f"An error occurred: {str(ex)}"}
 
-
+# Method to store pull request event data in MongoDB
 def create_pull_request_event(data: dict, event: str):
     try:
         request_id = data.get('pull_request', {}).get('id')

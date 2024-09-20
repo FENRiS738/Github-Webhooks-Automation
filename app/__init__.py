@@ -2,6 +2,8 @@ from flask import Flask
 from .webhook import webhook
 from .connections import init_app
 
+
+# Create an app instance
 def create_app():
     app = Flask(__name__)
 
