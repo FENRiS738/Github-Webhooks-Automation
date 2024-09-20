@@ -9,7 +9,10 @@ webhook = Blueprint('Webhook', __name__, url_prefix='/webhooks')
 # Endpoint to get all webhooks event call details and displays them on frontend  
 @webhook.get('/recieved')
 def get_stored_data():
+    # Extracting all the data from the database
     events = list(mongo.db.events.find().sort('timestamp', -1))
+
+    # Generating a list of dictionaries to be passed to the frontend
     for event in events:
         event['_id'] = str(event['_id'])
         event['timestamp'] = event['timestamp'].astimezone(pytz.utc).strftime('%d %B %Y - %I:%M %p UTC')
@@ -17,6 +20,7 @@ def get_stored_data():
             event['message'] = f'{event["author"]} pushed to "{event["to_branch"]}" on {event["timestamp"]}'
         elif event['action'] == 'pull_request':
             event['message'] = f'{event["author"]} submitted a pull request from "{event["from_branch"]}" to "{event["to_branch"]}" on {event["timestamp"]}'
+    
     return render_template('index.html', events=events)
 
 # Endpoint to accept push and pull request webhooks event calls
@@ -25,6 +29,7 @@ def get_webhook_data():
     event = request.headers.get('X-GitHub-Event')
     data: dict = request.get_json()
 
+    # Checking if the event is a push or pull request event
     if event == 'push':
         response = create_push_event(data, event)
         if 'error' in response:
@@ -45,9 +50,11 @@ def create_push_event(data: dict, event: str):
         ref = data.get('ref', "")
         timestamp = data.get('head_commit', {}).get('timestamp')
 
+        # Checking if the data is valid
         if not all([request_id, author, ref, timestamp]):
             return {"error": "Missing required data in the payload"}
 
+        # Creating a new document for events collection
         record = {
             "request_id": request_id,
             "author": author,
@@ -56,6 +63,8 @@ def create_push_event(data: dict, event: str):
             "to_branch": ref.split('/')[-1],
             "timestamp": datetime.datetime.fromisoformat(timestamp).astimezone(pytz.utc)
         }
+
+        # Inserting data into MongoDB
         mongo.db.events.insert_one(record)
         return {"success": "ok"}
 
@@ -71,9 +80,11 @@ def create_pull_request_event(data: dict, event: str):
         to_branch = data.get('pull_request', {}).get('base', {}).get('ref')
         timestamp = data.get('pull_request', {}).get('updated_at')
 
+        # Checking if the data is valid
         if not all([request_id, author, event, from_branch, to_branch, timestamp]):
             return {"error": "Missing required data in the payload"}
 
+        # Creating a new document for events collection
         record = {
             "request_id": request_id,
             "author": author,
@@ -83,6 +94,7 @@ def create_pull_request_event(data: dict, event: str):
             "timestamp": datetime.datetime.fromisoformat(timestamp).astimezone(pytz.utc)
         }
 
+        # Inserting data into MongoDB
         mongo.db.events.insert_one(record)
         return {"success": "ok"}
 
